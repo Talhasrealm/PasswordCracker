@@ -4,7 +4,7 @@ namespace PasswordCracker.Classes
 {
     public class PasswordManager
     {
-        private const string CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        private const string CHARSET = "abcdefghijklmnopqrstuvwxyz0123456789";
 
         public string PlainPassword { get; private set; }
         public string HashedPassword { get; private set; }

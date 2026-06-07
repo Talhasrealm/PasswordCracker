@@ -12,70 +12,69 @@ namespace PasswordCracker
         private BruteForceEngine _engine;
         private PerformanceLogger _logger;
 
-        private System.Windows.Forms.Timer _uiTimer;
+        private System.Windows.Forms.Timer _timer;
         private DateTime _startTime;
         private bool _isRunning = false;
 
-        // ── Controls ──
+        // controls
         private GroupBox grpPassword, grpAttack, grpResults;
-        private Label lblPasswordInfo, lblHashDisplay, lblThreadCount, lblAttempts, lblElapsed;
-        private TextBox txtCustomPassword;
-        private Button btnGeneratePassword, btnSetCustom, btnStartStop, btnRunComparison, btnSaveLog, btnClear;
+        private Label lblInfo, lblHash, lblThreads, lblAttempts, lblElapsed;
+        private TextBox txtPassword;
+        private Button btnGenerate, btnCustom, btnStartStop, btnCompare, btnSave, btnClear;
         private ProgressBar progressBar;
-        private RichTextBox txtResults;
+        private RichTextBox txtLog;
 
         public MainForm()
         {
             InitializeComponent();
             BuildUI();
-            InitWorkers();
+            Setup();
         }
 
         private void BuildUI()
         {
-            this.Text = "Password Cracker - Brute Force Demo";
+            this.Text = "Password Cracker";
             this.Size = new Size(720, 700);
-            this.MinimumSize = new Size(700, 650);
             this.BackColor = Color.FromArgb(30, 30, 40);
             this.ForeColor = Color.White;
             this.Font = new Font("Segoe UI", 9f);
             this.StartPosition = FormStartPosition.CenterScreen;
 
-            // ── Password Group ──
+            // password group
             grpPassword = MakeGroup("Password Setup", 10, 10, 685, 130);
 
-            lblPasswordInfo = MakeLabel("No password set. Generate one or type your own (4-5 chars).", 10, 25, 660, 20);
-            lblPasswordInfo.ForeColor = Color.LightYellow;
+            lblInfo = MakeLabel("No password set yet.", 10, 25, 660, 20);
+            lblInfo.ForeColor = Color.LightYellow;
 
-            lblHashDisplay = MakeLabel("SHA256 Hash: —", 10, 50, 660, 20);
-            lblHashDisplay.ForeColor = Color.FromArgb(100, 200, 100);
-            lblHashDisplay.Font = new Font("Consolas", 8f);
+            lblHash = MakeLabel("Hash: —", 10, 50, 660, 20);
+            lblHash.ForeColor = Color.LightGreen;
+            lblHash.Font = new Font("Consolas", 8f);
 
-            txtCustomPassword = new TextBox
+            txtPassword = new TextBox
             {
                 Left = 10,
                 Top = 78,
                 Width = 200,
                 MaxLength = 5,
                 BackColor = Color.FromArgb(50, 50, 65),
-                ForeColor = Color.White,
+                ForeColor = Color.White
             };
 
-            btnSetCustom = MakeButton("Use Custom", 220, 76, 130, 28, Color.FromArgb(70, 100, 160));
-            btnSetCustom.Click += BtnSetCustom_Click;
+            btnCustom = MakeButton("Use Custom", 220, 76, 120, 28, Color.FromArgb(70, 100, 160));
+            btnCustom.Click += BtnCustom_Click;
 
-            btnGeneratePassword = MakeButton("Generate Random", 360, 76, 150, 28, Color.FromArgb(70, 130, 80));
-            btnGeneratePassword.Click += BtnGeneratePassword_Click;
+            btnGenerate = MakeButton("Generate Random", 350, 76, 150, 28, Color.FromArgb(70, 130, 80));
+            btnGenerate.Click += BtnGenerate_Click;
 
             grpPassword.Controls.AddRange(new Control[] {
-                lblPasswordInfo, lblHashDisplay, txtCustomPassword, btnSetCustom, btnGeneratePassword
+                lblInfo, lblHash, txtPassword, btnCustom, btnGenerate
             });
 
-            // ── Attack Group ──
+            // attack group
             grpAttack = MakeGroup("Brute Force Attack", 10, 150, 685, 160);
 
-            lblThreadCount = MakeLabel("Threads: —", 10, 25, 500, 18);
-            lblThreadCount.ForeColor = Color.FromArgb(150, 200, 255);
+            lblThreads = MakeLabel("Threads: —", 10, 25, 500, 18);
+            lblThreads.ForeColor = Color.LightBlue;
 
             btnStartStop = MakeButton("START ATTACK", 10, 50, 180, 36, Color.FromArgb(40, 160, 80));
             btnStartStop.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
@@ -85,8 +84,8 @@ namespace PasswordCracker
             lblAttempts.ForeColor = Color.Orange;
             lblAttempts.Font = new Font("Consolas", 9f);
 
-            lblElapsed = MakeLabel("Elapsed: 00:00:00", 440, 60, 200, 18);
-            lblElapsed.ForeColor = Color.FromArgb(200, 200, 100);
+            lblElapsed = MakeLabel("Time: 00:00:00", 440, 60, 200, 18);
+            lblElapsed.ForeColor = Color.Yellow;
             lblElapsed.Font = new Font("Consolas", 9f);
 
             progressBar = new ProgressBar
@@ -100,13 +99,13 @@ namespace PasswordCracker
             };
 
             grpAttack.Controls.AddRange(new Control[] {
-                lblThreadCount, btnStartStop, lblAttempts, lblElapsed, progressBar
+                lblThreads, btnStartStop, lblAttempts, lblElapsed, progressBar
             });
 
-            // ── Results Group ──
-            grpResults = MakeGroup("Results and Performance Log", 10, 320, 685, 320);
+            // results group
+            grpResults = MakeGroup("Results", 10, 320, 685, 320);
 
-            txtResults = new RichTextBox
+            txtLog = new RichTextBox
             {
                 Left = 10,
                 Top = 25,
@@ -118,78 +117,85 @@ namespace PasswordCracker
                 ReadOnly = true,
                 ScrollBars = RichTextBoxScrollBars.Vertical
             };
-            txtResults.AppendText("Welcome! Generate a password above then click START ATTACK.\r\n");
+            txtLog.AppendText("Ready. Generate a password and click START ATTACK.\r\n");
 
-            btnRunComparison = MakeButton("Run Comparison", 10, 265, 150, 28, Color.FromArgb(120, 60, 160));
-            btnRunComparison.Click += BtnRunComparison_Click;
+            btnCompare = MakeButton("Run Comparison", 10, 265, 150, 28, Color.FromArgb(120, 60, 160));
+            btnCompare.Click += BtnCompare_Click;
 
-            btnSaveLog = MakeButton("Save Log", 170, 265, 110, 28, Color.FromArgb(60, 100, 140));
-            btnSaveLog.Click += (s, e) => { _logger.SaveToFile(); Log("Log saved to Desktop."); };
+            btnSave = MakeButton("Save Log", 170, 265, 110, 28, Color.FromArgb(60, 100, 140));
+            btnSave.Click += (s, e) => { _logger.SaveToFile(); Log("Log saved."); };
 
             btnClear = MakeButton("Clear", 290, 265, 90, 28, Color.FromArgb(130, 50, 50));
-            btnClear.Click += (s, e) => { txtResults.Clear(); _logger.Clear(); };
+            btnClear.Click += (s, e) => { txtLog.Clear(); _logger.Clear(); };
 
             grpResults.Controls.AddRange(new Control[] {
-                txtResults, btnRunComparison, btnSaveLog, btnClear
+                txtLog, btnCompare, btnSave, btnClear
             });
 
             this.Controls.AddRange(new Control[] { grpPassword, grpAttack, grpResults });
         }
 
-        private void InitWorkers()
+        private void Setup()
         {
             _passwordManager = new PasswordManager();
             _logger = new PerformanceLogger();
 
-            _uiTimer = new System.Windows.Forms.Timer { Interval = 500 };
-            _uiTimer.Tick += (s, e) =>
+            // timer updates the elapsed time every 500ms
+            _timer = new System.Windows.Forms.Timer();
+            _timer.Interval = 500;
+            _timer.Tick += (s, e) =>
             {
-                lblElapsed.Text = $"Elapsed: {DateTime.Now - _startTime:hh\\:mm\\:ss}";
-                lblAttempts.Text = $"Attempts: {_engine?.TotalAttempts:N0}";
+                lblElapsed.Text = "Time: " + (DateTime.Now - _startTime).ToString(@"hh\:mm\:ss");
+                lblAttempts.Text = "Attempts: " + _engine?.TotalAttempts.ToString("N0");
             };
 
-            int threads = Math.Max(1, Environment.ProcessorCount - 1);
-            lblThreadCount.Text = $"Using {threads} thread(s)  |  CPU cores: {Environment.ProcessorCount}  |  Max = cores - 1";
+            int threads = Environment.ProcessorCount - 1;
+            if (threads < 1) threads = 1;
+            lblThreads.Text = "Using " + threads + " thread(s)  |  CPU cores: " + Environment.ProcessorCount;
         }
 
-        // ── Button Handlers ──
-
-        private void BtnGeneratePassword_Click(object sender, EventArgs e)
+        // generate random password button
+        private void BtnGenerate_Click(object sender, EventArgs e)
         {
             if (_isRunning) return;
+
             _passwordManager.GenerateNewPassword();
-            UpdatePasswordDisplay();
-            Log($"Generated password: '{_passwordManager.PlainPassword}' (length {_passwordManager.PasswordLength})");
+            lblInfo.Text = "Password: '" + _passwordManager.PlainPassword + "'  |  Length: " + _passwordManager.PasswordLength;
+            lblHash.Text = "Hash: " + _passwordManager.HashedPassword;
+            Log("Generated password: '" + _passwordManager.PlainPassword + "'");
         }
 
-        private void BtnSetCustom_Click(object sender, EventArgs e)
+        // set custom password button
+        private void BtnCustom_Click(object sender, EventArgs e)
         {
             if (_isRunning) return;
-            if (_passwordManager.SetCustomPassword(txtCustomPassword.Text.Trim()))
+
+            bool ok = _passwordManager.SetCustomPassword(txtPassword.Text.Trim());
+            if (ok)
             {
-                UpdatePasswordDisplay();
-                Log($"Custom password set: '{_passwordManager.PlainPassword}'");
+                lblInfo.Text = "Password: '" + _passwordManager.PlainPassword + "'  |  Length: " + _passwordManager.PasswordLength;
+                lblHash.Text = "Hash: " + _passwordManager.HashedPassword;
+                Log("Custom password set: '" + _passwordManager.PlainPassword + "'");
             }
             else
             {
-                MessageBox.Show("Password must be 4-5 characters, letters and digits only.",
-                    "Invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Password must be 4-5 characters, letters and digits only.");
             }
         }
 
+        // start or stop the attack
         private void BtnStartStop_Click(object sender, EventArgs e)
         {
             if (_passwordManager.HashedPassword == null)
             {
-                MessageBox.Show("Please generate or set a password first!",
-                    "No Password", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Please generate a password first!");
                 return;
             }
 
             if (_isRunning)
             {
-                _engine?.Stop();
-                StopUI("Attack stopped by user.");
+                _engine.Stop();
+                StopAttack("Stopped by user.");
             }
             else
             {
@@ -197,32 +203,34 @@ namespace PasswordCracker
             }
         }
 
-        private void BtnRunComparison_Click(object sender, EventArgs e)
+        // run single vs multi thread comparison
+        private void BtnCompare_Click(object sender, EventArgs e)
         {
             if (_passwordManager.HashedPassword == null || _isRunning) return;
 
-            Log("Running single-thread comparison, please wait...");
-            btnRunComparison.Enabled = false;
+            Log("Running single-thread test, please wait...");
+            btnCompare.Enabled = false;
+
             string hash = _passwordManager.HashedPassword;
             string plain = _passwordManager.PlainPassword;
 
+            // run in background so GUI doesnt freeze
             Thread t = new Thread(() =>
             {
-                var tempEngine = new BruteForceEngine(hash, PasswordManager.GetCharset());
-                TimeSpan singleTime = tempEngine.RunSingleThreaded(hash);
+                BruteForceEngine temp = new BruteForceEngine(hash, PasswordManager.GetCharset());
+                TimeSpan time = temp.RunSingleThreaded(hash);
+
                 Invoke(new Action(() =>
                 {
-                    _logger.LogSingleThread(plain, singleTime, 0);
-                    Log($"Single-thread finished in {singleTime.TotalSeconds:F3}s");
+                    _logger.LogSingleThread(plain, time, 0);
+                    Log("Single-thread time: " + time.TotalSeconds.ToString("F3") + "s");
                     Log(_logger.GetComparisonReport());
-                    btnRunComparison.Enabled = true;
+                    btnCompare.Enabled = true;
                 }));
             });
             t.IsBackground = true;
             t.Start();
         }
-
-        // ── Attack Logic ──
 
         private void StartAttack()
         {
@@ -230,68 +238,86 @@ namespace PasswordCracker
             _startTime = DateTime.Now;
 
             _engine = new BruteForceEngine(_passwordManager.HashedPassword, PasswordManager.GetCharset());
-            _engine.OnProgressUpdate += attempts =>
-                Invoke(new Action(() => lblAttempts.Text = $"Attempts: {attempts:N0}"));
+
+            // when progress updates, show it in the label
+            _engine.OnProgressUpdate += (attempts) =>
+            {
+                Invoke(new Action(() =>
+                {
+                    lblAttempts.Text = "Attempts: " + attempts.ToString("N0");
+                }));
+            };
+
+            // when password is found
             _engine.OnPasswordFound += (pwd, elapsed) =>
+            {
                 Invoke(new Action(() =>
                 {
                     _logger.LogMultiThread(pwd, elapsed, _engine.TotalAttempts, _engine.ThreadCount);
-                    StopUI($"FOUND: '{pwd}'  in {elapsed.TotalSeconds:F3}s");
-                    Log($"PASSWORD FOUND: '{pwd}'");
-                    Log($"Time: {elapsed.TotalSeconds:F3}s  |  Attempts: {_engine.TotalAttempts:N0}  |  Threads: {_engine.ThreadCount}");
+                    Log("PASSWORD FOUND: '" + pwd + "'");
+                    Log("Time: " + elapsed.TotalSeconds.ToString("F3") + "s  |  Attempts: " + _engine.TotalAttempts.ToString("N0"));
                     Log(_logger.GetComparisonReport());
+                    StopAttack("Attack finished!");
                 }));
-            _engine.OnStopped += () => Invoke(new Action(() => StopUI("Attack stopped.")));
+            };
+
+            // when stopped without finding
+            _engine.OnStopped += () =>
+            {
+                Invoke(new Action(() => StopAttack("Stopped.")));
+            };
 
             btnStartStop.Text = "STOP ATTACK";
             btnStartStop.BackColor = Color.FromArgb(180, 50, 50);
             progressBar.MarqueeAnimationSpeed = 30;
-            _uiTimer.Start();
+            _timer.Start();
 
-            Log($"Attack started! Searching from length 1 to 6 using {_engine.ThreadCount} thread(s)...");
+            Log("Attack started! Using " + _engine.ThreadCount + " threads, searching length 1 to 6...");
             _engine.StartMultiThreaded();
         }
 
-        private void StopUI(string message)
+        private void StopAttack(string message)
         {
             _isRunning = false;
-            _uiTimer.Stop();
+            _timer.Stop();
             btnStartStop.Text = "START ATTACK";
             btnStartStop.BackColor = Color.FromArgb(40, 160, 80);
             progressBar.MarqueeAnimationSpeed = 0;
             Log(message);
         }
 
-        private void UpdatePasswordDisplay()
-        {
-            lblPasswordInfo.Text = $"Password: '{_passwordManager.PlainPassword}'  |  Length: {_passwordManager.PasswordLength}  |  (Engine does NOT know the length!)";
-            lblHashDisplay.Text = $"SHA256 Hash: {_passwordManager.HashedPassword}";
-        }
-
+        // add a line to the log box
         private void Log(string message)
         {
-            if (InvokeRequired) { Invoke(new Action(() => Log(message))); return; }
-            txtResults.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\r\n");
-            txtResults.ScrollToCaret();
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => Log(message)));
+                return;
+            }
+            txtLog.AppendText("[" + DateTime.Now.ToString("HH:mm:ss") + "] " + message + "\r\n");
+            txtLog.ScrollToCaret();
         }
 
-        // ── Control Factories ──
-
-        private GroupBox MakeGroup(string title, int x, int y, int w, int h) =>
-            new GroupBox
+        // helper to create a group box
+        private GroupBox MakeGroup(string title, int x, int y, int w, int h)
+        {
+            return new GroupBox
             {
                 Text = title,
                 Left = x,
                 Top = y,
                 Width = w,
                 Height = h,
-                ForeColor = Color.FromArgb(150, 200, 255),
+                ForeColor = Color.LightBlue,
                 BackColor = Color.FromArgb(38, 38, 52),
                 Font = new Font("Segoe UI", 9f, FontStyle.Bold)
             };
+        }
 
-        private Label MakeLabel(string text, int x, int y, int w, int h) =>
-            new Label
+        // helper to create a label
+        private Label MakeLabel(string text, int x, int y, int w, int h)
+        {
+            return new Label
             {
                 Text = text,
                 Left = x,
@@ -301,9 +327,12 @@ namespace PasswordCracker
                 ForeColor = Color.White,
                 AutoSize = false
             };
+        }
 
-        private Button MakeButton(string text, int x, int y, int w, int h, Color bg) =>
-            new Button
+        // helper to create a button
+        private Button MakeButton(string text, int x, int y, int w, int h, Color bg)
+        {
+            return new Button
             {
                 Text = text,
                 Left = x,
@@ -315,5 +344,6 @@ namespace PasswordCracker
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand
             };
+        }
     }
 }
